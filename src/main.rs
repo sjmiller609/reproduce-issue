@@ -3,10 +3,11 @@ use apalis::prelude::*;
 use apalis_sql::postgres::PostgresStorage;
 use futures::future;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use tracing::{error, info};
 mod profiling;
 use std::ops::Deref;
+use tokio::time::Duration;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Job1 {
@@ -81,9 +82,13 @@ async fn main() -> std::io::Result<()> {
     let database_url = std::env::var("DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/postgres".to_string());
 
-    let pool = PgPool::connect(&database_url)
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .acquire_timeout(Duration::from_secs(3))
+        .idle_timeout(Duration::from_secs(10))
+        .connect(&database_url)
         .await
-        .expect("Failed to connect to Postgres");
+        .expect("Failed to get database pool");
 
     PostgresStorage::setup(&pool)
         .await
