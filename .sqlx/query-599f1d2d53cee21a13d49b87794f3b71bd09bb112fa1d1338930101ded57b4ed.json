@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT cron.unschedule($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "unschedule",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "599f1d2d53cee21a13d49b87794f3b71bd09bb112fa1d1338930101ded57b4ed"
+}

@@ -10,16 +10,12 @@ use std::ops::Deref;
 use tokio::time::Duration;
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Job1 {
-    id: i32,
-}
+struct Job1 {}
 
 #[derive(Debug, Serialize, Deserialize)]
-struct Job2 {
-    name: String,
-}
+struct Job2 {}
 
-async fn job1_handler(_job: Job1, pool: Data<PgPool>, task_id: TaskId) -> Result<(), Error> {
+async fn job1_handler(_job: Job1, pool: Data<PgPool>, task_id: TaskId) {
     info!("Processing Job1: {}", task_id);
 
     // Check PostgreSQL connection by querying postmaster start time
@@ -33,11 +29,9 @@ async fn job1_handler(_job: Job1, pool: Data<PgPool>, task_id: TaskId) -> Result
         ),
         Err(e) => error!("Job1 - Failed to query PG: {}", e),
     }
-
-    Ok(())
 }
 
-async fn job2_handler(_job: Job2, pool: Data<PgPool>, task_id: TaskId) -> Result<(), Error> {
+async fn job2_handler(_job: Job2, pool: Data<PgPool>, task_id: TaskId) {
     info!("Processing Job2: {}", task_id);
 
     // Check PostgreSQL connection by querying postmaster start time
@@ -51,8 +45,6 @@ async fn job2_handler(_job: Job2, pool: Data<PgPool>, task_id: TaskId) -> Result
         ),
         Err(e) => error!("Job2 - Failed to query PG: {}", e),
     }
-
-    Ok(())
 }
 
 #[get("/health")]
@@ -93,6 +85,47 @@ async fn main() -> std::io::Result<()> {
     PostgresStorage::setup(&pool)
         .await
         .expect("unable to run migrations for postgres");
+
+    sqlx::query!("CREATE EXTENSION IF NOT EXISTS pg_cron")
+        .execute(&pool)
+        .await
+        .unwrap_or_default();
+
+    // Schedule or reschedule cron jobs
+    info!("Setting up cron jobs...");
+    for (job_name, job_type) in [("job1", "Job1"), ("job2", "Job2")] {
+        // First try to unschedule if exists
+        sqlx::query_scalar!("SELECT cron.unschedule($1)", job_name)
+            .fetch_one(&pool)
+            .await
+            .unwrap_or_default();
+
+        // Schedule the job
+        sqlx::query!(
+            r#"
+            SELECT cron.schedule($1, $2, $3)
+            "#,
+            job_name,
+            "* * * * *",
+            format!(
+                "
+                SELECT apalis.push_job(
+                    '{}',
+                    '{{}}'::json,
+                    'Pending',
+                    now(),
+                    1
+                );
+                ",
+                format!("investigate_jobs::{}", job_type)
+            )
+        )
+        .fetch_one(&pool)
+        .await
+        .unwrap_or_else(|_| panic!("Failed to schedule {}", job_name));
+
+        info!("Scheduled cron job: {}", job_name);
+    }
 
     let job1_storage: PostgresStorage<Job1> = PostgresStorage::new(pool.clone());
     let job2_storage: PostgresStorage<Job2> = PostgresStorage::new(pool.clone());

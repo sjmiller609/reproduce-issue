@@ -41,7 +41,7 @@ RUN mkdir -p /etc/postgresql/conf.d
 COPY postgresql.conf /etc/postgresql/conf.d/custom.conf
 
 # Copy initialization scripts
-COPY init-scripts/ /docker-entrypoint-initdb.d/
+# COPY init-scripts/ /docker-entrypoint-initdb.d/
 
 # modify postgres config to include custom conf.d directory
 RUN mkdir -p /docker-entrypoint-initdb.d && \
