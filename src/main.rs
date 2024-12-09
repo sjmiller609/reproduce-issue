@@ -5,7 +5,9 @@ use futures::future;
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tracing::{error, info};
+mod cert_utils;
 mod profiling;
+use cert_utils::get_root_ca;
 use std::ops::Deref;
 use tokio::time::Duration;
 
@@ -17,6 +19,12 @@ struct Job2 {}
 
 async fn job1_handler(_job: Job1, pool: Data<PgPool>, task_id: TaskId) {
     info!("Processing Job1: {}", task_id);
+
+    // This is something I do in my app, checking if possible cause of issue
+    // Suspicious of lazy_static
+    // Suspicious of network resources
+    let ca_cert = get_root_ca("example.com", 443).await.unwrap();
+    info!("Got cert: {}", &ca_cert[..25]);
 
     // Check PostgreSQL connection by querying postmaster start time
     match sqlx::query!("SELECT pg_postmaster_start_time()")

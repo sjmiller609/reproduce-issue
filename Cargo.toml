@@ -15,6 +15,8 @@ pprof = { version = "0.14.0", features = ["flamegraph"] }
 apalis = { version = "0.6", features = ["tracing", "retry", "timeout", "limit"] }
 apalis-sql = { version = "0.6", features = ["postgres"] }
 futures = "0.3.31"
+lazy_static = "1.5.0"
+openssl = "0.10.68"
 
 
 [profile.release]
