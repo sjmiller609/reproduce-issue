@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::{error, info};
 mod profiling;
+use std::ops::Deref;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Job1 {
@@ -17,13 +18,39 @@ struct Job2 {
     name: String,
 }
 
-async fn job1_handler(_job: Job1, task_id: TaskId) -> Result<(), Error> {
+async fn job1_handler(_job: Job1, pool: Data<PgPool>, task_id: TaskId) -> Result<(), Error> {
     info!("Processing Job1: {}", task_id);
+
+    // Check PostgreSQL connection by querying postmaster start time
+    match sqlx::query!("SELECT pg_postmaster_start_time()")
+        .fetch_one(pool.deref())
+        .await
+    {
+        Ok(result) => info!(
+            "Job1 - PG postmaster start time: {:?}",
+            result.pg_postmaster_start_time
+        ),
+        Err(e) => error!("Job1 - Failed to query PG: {}", e),
+    }
+
     Ok(())
 }
 
-async fn job2_handler(_job: Job2, task_id: TaskId) -> Result<(), Error> {
+async fn job2_handler(_job: Job2, pool: Data<PgPool>, task_id: TaskId) -> Result<(), Error> {
     info!("Processing Job2: {}", task_id);
+
+    // Check PostgreSQL connection by querying postmaster start time
+    match sqlx::query!("SELECT pg_postmaster_start_time()")
+        .fetch_one(pool.deref())
+        .await
+    {
+        Ok(result) => info!(
+            "Job2 - PG postmaster start time: {:?}",
+            result.pg_postmaster_start_time
+        ),
+        Err(e) => error!("Job2 - Failed to query PG: {}", e),
+    }
+
     Ok(())
 }
 
@@ -68,11 +95,13 @@ async fn main() -> std::io::Result<()> {
     let job_server = Monitor::new()
         .register({
             WorkerBuilder::new("job1")
+                .data(pool.clone())
                 .backend(job1_storage)
                 .build_fn(job1_handler)
         })
         .register({
             WorkerBuilder::new("job2")
+                .data(pool.clone())
                 .backend(job2_storage)
                 .build_fn(job2_handler)
         })
