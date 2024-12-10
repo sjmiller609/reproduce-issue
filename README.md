@@ -3,7 +3,7 @@
 ### Start the services using Docker Compose:
 
 ```bash
-docker compose up --build
+docker-compose up --build
 ```
 
 ### Check query rate:
