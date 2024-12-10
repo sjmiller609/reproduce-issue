@@ -1,47 +1,10 @@
 FROM postgres:16-bookworm
 
-ARG PG_VERSION=16
-ARG PG_PARTMAN_VERSION=5.1.0
-ARG PG_CRON_VERSION=1.6.4
-
-# Install build dependencies and extension packages
-RUN apt-get update && apt-get install -y \
-    build-essential clang llvm llvm-dev llvm-runtime cmake \
-    ca-certificates zip curl wget git software-properties-common flex \
-    libicu-dev libxml2 locales ssl-cert \
-    pkg-config libssl-dev libclang-dev \
-    postgresql-server-dev-$PG_VERSION \
-    vim \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install pg_partman
-RUN git clone https://github.com/pgpartman/pg_partman.git \
-    && cd pg_partman \
-    && git fetch origin v$PG_PARTMAN_VERSION \
-    && git checkout v$PG_PARTMAN_VERSION \
-    && make \
-    && make install \
-    && cd .. \
-    && rm -rf pg_partman
-
-# Install pg_cron
-RUN git clone https://github.com/citusdata/pg_cron.git \
-    && cd pg_cron \
-    && git fetch origin v$PG_CRON_VERSION \
-    && git checkout v$PG_CRON_VERSION \
-    && make \
-    && make install \
-    && cd .. \
-    && rm -rf pg_cron
-
 # Create directory for custom configurations
 RUN mkdir -p /etc/postgresql/conf.d
 
 # Copy custom postgresql.conf to conf.d directory
 COPY postgresql.conf /etc/postgresql/conf.d/custom.conf
-
-# Copy initialization scripts
-# COPY init-scripts/ /docker-entrypoint-initdb.d/
 
 # modify postgres config to include custom conf.d directory
 RUN mkdir -p /docker-entrypoint-initdb.d && \

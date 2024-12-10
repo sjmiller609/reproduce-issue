@@ -5,9 +5,7 @@ use futures::future;
 use serde::{Deserialize, Serialize};
 use sqlx::{postgres::PgPoolOptions, PgPool};
 use tracing::{error, info};
-mod cert_utils;
 mod profiling;
-use cert_utils::get_root_ca;
 use std::ops::Deref;
 use tokio::time::Duration;
 
@@ -19,12 +17,6 @@ struct Job2 {}
 
 async fn job1_handler(_job: Job1, pool: Data<PgPool>, task_id: TaskId) {
     info!("Processing Job1: {}", task_id);
-
-    // This is something I do in my app, checking if possible cause of issue
-    // Suspicious of lazy_static
-    // Suspicious of network resources
-    let ca_cert = get_root_ca("example.com", 443).await.unwrap();
-    info!("Got cert: {}", &ca_cert[..25]);
 
     // Check PostgreSQL connection by querying postmaster start time
     match sqlx::query!("SELECT pg_postmaster_start_time()")
@@ -94,51 +86,10 @@ async fn main() -> std::io::Result<()> {
         .await
         .expect("unable to run migrations for postgres");
 
-    sqlx::query!("CREATE EXTENSION IF NOT EXISTS pg_cron")
-        .execute(&pool)
-        .await
-        .unwrap_or_default();
-
     sqlx::query!("CREATE EXTENSION IF NOT EXISTS pg_stat_statements")
         .execute(&pool)
         .await
         .unwrap_or_default();
-
-    // Schedule or reschedule cron jobs
-    info!("Setting up cron jobs...");
-    for (job_name, job_type) in [("job1", "Job1"), ("job2", "Job2")] {
-        // First try to unschedule if exists
-        sqlx::query_scalar!("SELECT cron.unschedule($1)", job_name)
-            .fetch_one(&pool)
-            .await
-            .unwrap_or_default();
-
-        // Schedule the job
-        sqlx::query!(
-            r#"
-            SELECT cron.schedule($1, $2, $3)
-            "#,
-            job_name,
-            "* * * * *",
-            format!(
-                "
-                SELECT apalis.push_job(
-                    '{}',
-                    '{{}}'::json,
-                    'Pending',
-                    now(),
-                    1
-                );
-                ",
-                format!("investigate_jobs::{}", job_type)
-            )
-        )
-        .fetch_one(&pool)
-        .await
-        .unwrap_or_else(|_| panic!("Failed to schedule {}", job_name));
-
-        info!("Scheduled cron job: {}", job_name);
-    }
 
     let job1_storage: PostgresStorage<Job1> = PostgresStorage::new(pool.clone());
     let job2_storage: PostgresStorage<Job2> = PostgresStorage::new(pool.clone());
