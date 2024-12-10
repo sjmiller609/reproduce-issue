@@ -11,8 +11,8 @@ serde = { version = "1.0", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = "0.3"
 pprof = { version = "0.14.0", features = ["flamegraph"] }
-apalis = { version = "0.6", features = ["tracing", "retry", "timeout", "limit"] }
-apalis-sql = { version = "0.6", features = ["postgres"] }
+apalis = { version = "0.6.1", features = ["tracing", "retry", "timeout", "limit"] }
+apalis-sql = { version = "0.6.1", features = ["postgres"] }
 futures = "0.3.31"
 thiserror = "2.0.6"
 
