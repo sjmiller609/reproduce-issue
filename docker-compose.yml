@@ -13,10 +13,11 @@ services:
     build: .
     environment:
       - DATABASE_URL=postgres://postgres:postgres@pgbouncer:6432/postgres
-      - RUST_LOG=info
       - ENABLE_PROFILING=true
+      - RUST_LOG=trace,apalis_core=trace
     depends_on:
       - pgbouncer
+    cpus: 0.5
     expose:
       - "8080"
 

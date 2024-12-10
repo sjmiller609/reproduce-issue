@@ -99,6 +99,11 @@ async fn main() -> std::io::Result<()> {
         .await
         .unwrap_or_default();
 
+    sqlx::query!("CREATE EXTENSION IF NOT EXISTS pg_stat_statements")
+        .execute(&pool)
+        .await
+        .unwrap_or_default();
+
     // Schedule or reschedule cron jobs
     info!("Setting up cron jobs...");
     for (job_name, job_type) in [("job1", "Job1"), ("job2", "Job2")] {
@@ -141,12 +146,16 @@ async fn main() -> std::io::Result<()> {
     let job_server = Monitor::new()
         .register({
             WorkerBuilder::new("job1")
+                .enable_tracing()
+                .concurrency(1)
                 .data(pool.clone())
                 .backend(job1_storage)
                 .build_fn(job1_handler)
         })
         .register({
             WorkerBuilder::new("job2")
+                .enable_tracing()
+                .concurrency(1)
                 .data(pool.clone())
                 .backend(job2_storage)
                 .build_fn(job2_handler)
