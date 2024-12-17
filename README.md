@@ -1,5 +1,7 @@
 ## Reproduce query rate issues
 
+Problem resolved in apalis 0.6.2
+
 ### Start the services using Docker Compose:
 
 ```bash
